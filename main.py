@@ -13,13 +13,19 @@ from kivy.uix.popup import Popup
 from kivymd.uix.anchorlayout import MDAnchorLayout
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivymd.uix.textfield import MDTextField, MDTextFieldRect
+from kivymd.uix.pickers import MDTimePicker
 from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDFlatButton
+from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.dialog import MDDialog
+import time
 from time import sleep
+import calendar
+import numpy
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.screen import MDScreen
 import json
+from kivymd.uix.pickers import MDDatePicker
 
 
 # Login Page
@@ -72,6 +78,7 @@ class Login(MDScreen):
                                buttons=[MDFlatButton(text="skip", on_release=self.dialogue),
                                         MDFlatButton(text="Proceed", on_release=self.enter_other_information)]
                                )
+       
 
 # dismiss function for the dialog
     def dialogue(self, instance):
@@ -127,7 +134,7 @@ class Login(MDScreen):
         self.save_contact(username, phone_number, email, password)
         self.save_contact(username, phone_number, email, password)
         next_page = Front()
-        sleep(3)
+      #  sleep(3)
         MyApp.change(self, next_page)
 
 # function to clear the content of the screen
@@ -262,9 +269,18 @@ class Front(MDScreen):
         self.home_layout.add_widget(self.label_home)
 
         # widget subject to the work page
-        self.work_layout = MDGridLayout(cols=1, spacing=20, padding=10)
-        self.work_label = MDLabel(text="This is the workspace")
-        self.work_layout.add_widget(self.work_label)
+        self.work_layout = MDScrollView()
+        self.work_grid = MDGridLayout(cols = 2, spacing = 20)
+        self.note_card = MDCard(size_hint=(0.3, 0.3),
+                                elevation=5,
+                                orientation='vertical'
+                                )
+        self.todo_list = MDCard(size_hint=(0.3, 0.3),
+                                elevation=5,
+                                orientation = 'vertical')
+        self.work_grid.add_widget(self.todo_list)
+        self.work_grid.add_widget(self.note_card)
+        self.work_layout.add_widget(self.work_grid)
 
         # widget subject to the email page
         self.email_layout = MDGridLayout(cols=1, spacing=20, padding=10)
@@ -290,23 +306,36 @@ class Front(MDScreen):
 
         self.tool_layout = MDGridLayout(cols=1, padding=0, spacing=50)
 
-        self.cover_space_ii = MDLabel(text="", size_hint=(0.76, 0.01))
+        self.cover_space_ii = MDLabel(text="", size_hint=(0.72, 0.01))
 
         self.calender = MDIconButton(icon='calendar', size_hint=(0.001, 0.0013),
                                      pos_hint={'center_y': 0.05, 'center_x': 0.4},
-                                     on_release=self.activate_calender)
+                                     on_release=self.activate_calendar)
 
         self.time = MDIconButton(icon='timer', size_hint=(0.001, 0.0013),
                                  pos_hint={'center_y': 0.05, 'center_x': 0.4},
                                  on_release=self.activate_timer)
 
         self.calculator = MDIconButton(icon='calculator', size_hint=(0.001, 0.0013),
-                                       pos_hint={'center_y': 0.05, 'center_x': 0.4},
-                                       on_release=self.activate_calculator)
+                                       pos_hint={'center_y': 0.05, 'center_x': 0.4})
+                                   #    on_release=self.activate_calculator
 
         self.location = MDIconButton(icon='map-marker', size_hint=(0.001, 0.0013),
-                                     pos_hint={'center_y': 0.05, 'center_x': 0.4},
-                                     on_release=self.activate_location)
+                                     pos_hint={'center_y': 0.05, 'center_x': 0.4})
+                                     # on_release=self.activate_location)
+
+        self.settings = MDIconButton(icon="cog", size_hint=(0.001, 0.0013),
+                                     pos_hint={'center_y': 0.05, 'center_x':0.4})
+
+        self.date_dialog = MDDatePicker()
+
+        self.time_dialog = MDTimePicker()
+
+        self.inform_save = MDDialog(size_hint=(0.9, 0.9),
+                                    title="Alarm has been scheduled",
+                                    buttons=[MDFlatButton(text="ok", on_release=self.assurance)]
+                                    )
+                                    
 
     # adding all widgets
         # adding minor widget to the tab card
@@ -327,6 +356,8 @@ class Front(MDScreen):
         self.tool_layout.add_widget(self.calculator)
         self.tool_layout.add_widget(self.location)
         self.tool_layout.add_widget(self.cover_space_ii)
+        self.tool_layout.add_widget(self.settings)
+
         self.tool_card.add_widget(self.tool_layout)
 
         # adding three major cards to the handler
@@ -356,12 +387,61 @@ class Front(MDScreen):
         self.main_card.clear_widgets()
         self.main_card.add_widget(self.profile_layout)
 
+    def activate_calendar(self, instance):
+        self.date_dialog.bind(on_save=self.on_save, on_cancel=self.on_cancel)
+        self.date_dialog.open()
+
+    def on_save(self, instance, value, date_range):
+        print(instance, value, date_range)
+
+    def on_cancel(self, instance, value):
+        '''Events called when the "CANCEL" dialog box button is clicked.'''
+
+    def activate_timer(self, instance):
+        self.time_dialog.bind(on_save=self.on_save)
+        self.time_dialog.open()
+
+    def on_save(self, instance, value):
+        self.inform_save.open()
+        print(value)
+
+    def assurance(self, instance):
+        self.inform_save.dismiss()
+
 
 # class for calculator popup
 class Calculator(Popup):
     def __init__(self, **kwargs):
         super(Calculator, self).__init__(**kwargs)
-        pass
+        self.content = MDGridLayout(cols = 1, rows= 2, spacing = 10)
+        entry_field = MDTextFieldRect(font_size = '16sp',
+                                      heigth = 40,
+                                      padding = 20
+                                      )
+        self.buttons = MDGridLayout(rows = 4, spacing = 7)
+
+        # adding buttons
+        # remember to change the text to icon
+        self.button_1 = MDIconButton(text = "1")
+        self.button_2 = MDIconButton(text = "2")
+        self.button_3 = MDIconButton(text = "3")
+        self.button_4 = MDIconButton(text = "4")
+        self.button_5 = MDIconButton(text = "5")
+        self.button_6 = MDIconButton(text = "6")
+        self.button_7 = MDIconButton(text = "7")
+        self.button_8 = MDIconButton(text = "8")
+        self.button_9 = MDIconButton(text = "9")
+        self.button_0 = MDIconButton(text = "0")
+        self.button_ = MDIconButton(text = "=")
+        self.button_add = MDIconButton(text="+")
+        self.button_sub = MDIconButton(text = "-")
+        self.button_mult = MDIconButton(text = "*")
+        self.button_div = MDIconButton(text="/")
+        self.button_cos = MDIconButton(text = "cos")
+        self.button_tan = MDIconButton(icon="")
+        self.button_sin = MDIconButton(icon = "")
+        self.button_root = MDIconButton(icon="")
+
 
 
 class MyApp(MDApp):
@@ -378,4 +458,5 @@ class MyApp(MDApp):
 
 
 MyApp().run()
+
 
